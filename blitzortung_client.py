@@ -11,10 +11,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 def lzw_decode(s):
-    """
-    Python implementation of the LZW decode function
-    Translated from the JavaScript version provided
-    """
     if not s:
         return ""
     
@@ -52,7 +48,6 @@ class BlitzortungClient:
         self.websocket = None
         
     async def connect_and_collect(self):
-        """Connect to WebSocket, send message, and collect data"""
         uri = "wss://ws1.blitzortung.org/"
         
         try:
@@ -77,35 +72,27 @@ class BlitzortungClient:
             await self.save_to_csv()
     
     async def collect_data(self):
-        """Collect and process incoming data"""
         logger.info("Starting data collection...")
         
         try:
             async for message in self.websocket:
                 try:
-                    # Log raw message
                     logger.info(f"Received raw message: {message[:100]}..." if len(message) > 100 else f"Received raw message: {message}")
-                    
-                    # Try to decode if it's LZW compressed
                     decoded_message = message
                     try:
                         decoded_message = lzw_decode(message)
                         logger.info(f"LZW decoded message: {decoded_message[:100]}..." if len(decoded_message) > 100 else f"LZW decoded message: {decoded_message}")
                     except Exception as decode_error:
                         logger.warning(f"LZW decode failed, using original message: {decode_error}")
-                    
-                    # Try to parse as JSON
                     try:
                         json_data = json.loads(decoded_message)
                         processed_data = self.process_json_data(json_data)
                     except json.JSONDecodeError:
-                        # If not JSON, treat as raw data
                         processed_data = {
                             'timestamp': datetime.now().isoformat(),
                             'raw_data': decoded_message,
                             'data_type': 'raw'
                         }
-                    
                     self.data_buffer.append(processed_data)
                     logger.info(f"Processed data entry: {processed_data}")
                     
@@ -118,13 +105,11 @@ class BlitzortungClient:
             logger.info("Data collection interrupted by user")
     
     def process_json_data(self, json_data):
-        """Process JSON data and extract relevant fields"""
         processed = {
             'timestamp': datetime.now().isoformat(),
             'data_type': 'json'
         }
         
-        # Add all JSON fields to the processed data
         if isinstance(json_data, dict):
             for key, value in json_data.items():
                 processed[key] = value
@@ -144,12 +129,12 @@ class BlitzortungClient:
         logger.info(f"Saving {len(self.data_buffer)} records to {self.csv_filename}")
         
         try:
-            # Convert to DataFrame for easier CSV handling
+            
             df = pd.DataFrame(self.data_buffer)
             df.to_csv(self.csv_filename, index=False)
             logger.info(f"Data saved successfully to {self.csv_filename}")
             
-            # Also save as backup with timestamp
+            
             backup_filename = f"blitzortung_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
             df.to_csv(backup_filename, index=False)
             logger.info(f"Backup saved as {backup_filename}")
@@ -158,7 +143,6 @@ class BlitzortungClient:
             logger.error(f"Error saving to CSV: {e}")
 
 async def main():
-    """Main function to run the Blitzortung client"""
     client = BlitzortungClient()
     
     try:
@@ -173,5 +157,5 @@ if __name__ == "__main__":
     print("Connecting to wss://ws1.blitzortung.org/")
     print("Press Ctrl+C to stop data collection and save to CSV")
     print("-" * 50)
-    
+
     asyncio.run(main())
